@@ -23,7 +23,7 @@ class CartSerializer(serializers.ModelSerializer):
 class CouponCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = CouponCode
-        fields = ['code', 'is_used', 'order_n', 'discount_percentage']  # Added 'discount_percentage'
+        fields = ['code', 'discount_percentage']  # Include only the required fields
 
 class OrderSerializer(serializers.ModelSerializer):
     cart = CartSerializer()

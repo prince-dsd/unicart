@@ -7,7 +7,7 @@ from django.db.models import Sum, F
 from drf_yasg.utils import swagger_auto_schema
 from decimal import Decimal
 from .models import Cart, Product, CouponCode, CartItem, Order
-from .serializers import CartSerializer, OrderSerializer
+from .serializers import CartSerializer, OrderSerializer, CouponCodeSerializer  # Ensure the serializer is imported
 from .swagger import cart_add_item, cart_checkout, generate_discount_code, report
 
 class CartViewSet(viewsets.ViewSet):
@@ -63,10 +63,11 @@ class CartViewSet(viewsets.ViewSet):
             )
 
     @swagger_auto_schema(**cart_checkout)
-    @action(detail=False, methods=['post'], url_path='checkout')  # Changed detail to False
+    @action(detail=False, methods=['post'], url_path='checkout')
     def checkout(self, request):
         user = request.user
         try:
+            # Get the user's cart
             cart = Cart.objects.get(user=user)
             if not cart.items.exists():
                 return Response(
@@ -80,18 +81,31 @@ class CartViewSet(viewsets.ViewSet):
 
             if coupon_code:
                 try:
+                    # Fetch the coupon code
                     discount_code = CouponCode.objects.get(code=coupon_code, is_used=False)
-                    discount_amount = cart.total_amount * (discount_code.discount_percentage / 100)
-                    cart.total_amount -= discount_amount
-                    discount_code.is_used = True
-                    discount_code.save()
+
+                    # Check if the current order matches the `order_n` of the coupon
+                    last_order = Order.objects.filter(user=user).order_by('-order_number').first()
+                    next_order_number = 1 if not last_order else last_order.order_number + 1
+
+                    if discount_code.order_n and next_order_number == discount_code.order_n:
+                        # Apply the discount percentage
+                        discount_amount = cart.total_amount * (discount_code.discount_percentage / 100)
+                        cart.total_amount -= discount_amount
+                        discount_code.is_used = True
+                        discount_code.save()
+                    else:
+                        return Response(
+                            {"error": f"Coupon code is not valid for order #{next_order_number}"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
                 except CouponCode.DoesNotExist:
                     return Response(
                         {"error": "Invalid or used coupon code"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
-            # Create order
+            # Create the order
             order = Order.objects.create(
                 user=user,
                 cart=cart,
@@ -99,17 +113,7 @@ class CartViewSet(viewsets.ViewSet):
                 total_amount=cart.total_amount
             )
 
-            # Generate discount code for every nth order (e.g., every 5th order)
-            nth_order = 5  # Change this to your desired nth number
-            if order.order_number % nth_order == 0:
-                new_code = f'DISCOUNT-{order.order_number}'
-                CouponCode.objects.create(
-                    code=new_code,
-                    order_n=order.order_number,
-                    discount_percentage=10.0  # Default discount percentage
-                )
-
-            # Clear cart
+            # Clear the cart
             cart.items.clear()
             cart.total_amount = 0
             cart.save()
@@ -190,3 +194,17 @@ class CartViewSet(viewsets.ViewSet):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @swagger_auto_schema(
+        operation_summary="Get Unused Coupon Codes",
+        operation_description="Retrieve all unused coupon codes along with their discount percentages.",
+        responses={200: "List of unused coupon codes"}
+    )
+    @action(detail=False, methods=['get'], url_path='unused-coupons')
+    def unused_coupons(self, request):
+        """
+        API to fetch all unused coupon codes and their discount percentages.
+        """
+        unused_coupons = CouponCode.objects.filter(is_used=False)  # Fetch unused coupon codes
+        serializer = CouponCodeSerializer(unused_coupons, many=True)  # Serialize the data
+        return Response(serializer.data, status=status.HTTP_200_OK)
