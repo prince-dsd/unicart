@@ -38,8 +38,8 @@ class CartViewSet(viewsets.ViewSet):
             
             # Ensure CartItem is tied to the user's cart
             cart_item, created = CartItem.objects.get_or_create(
-                product=product,
                 cart=cart,  # Associate the CartItem with the user's cart
+                product=product,
                 defaults={'quantity': quantity}
             )
             
