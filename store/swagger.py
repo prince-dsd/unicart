@@ -89,6 +89,80 @@ cart_add_item = {
     }
 }
 
+cart_add_items = {
+    "operation_summary": "Add multiple items to cart",
+    "operation_description": "Add multiple product items to the user's shopping cart with specified quantities.",
+    "request_body": openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=['products'],
+        properties={
+            'products': openapi.Schema(
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'product_id': openapi.Schema(
+                            type=openapi.TYPE_INTEGER,
+                            description='ID of the product to add'
+                        ),
+                        'quantity': openapi.Schema(
+                            type=openapi.TYPE_INTEGER,
+                            description='Quantity of the product',
+                            minimum=1
+                        ),
+                    },
+                ),
+                description='List of products with their quantities'
+            ),
+        }
+    ),
+    "responses": {
+        200: openapi.Response(
+            description="Items added successfully",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'cart': openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'user': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'items': openapi.Schema(
+                                type=openapi.TYPE_ARRAY,
+                                items=openapi.Schema(
+                                    type=openapi.TYPE_OBJECT,
+                                    properties={
+                                        'product': openapi.Schema(type=openapi.TYPE_OBJECT),
+                                        'quantity': openapi.Schema(type=openapi.TYPE_INTEGER)
+                                    }
+                                )
+                            ),
+                            'total_amount': openapi.Schema(type=openapi.TYPE_NUMBER)
+                        }
+                    )
+                }
+            )
+        ),
+        400: openapi.Response(
+            description="Bad Request",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'error': openapi.Schema(type=openapi.TYPE_STRING)
+                }
+            )
+        ),
+        404: openapi.Response(
+            description="Product not found",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'error': openapi.Schema(type=openapi.TYPE_STRING)
+                }
+            )
+        ),
+    }
+}
+
 cart_checkout = {
     "operation_summary": "Checkout cart",
     "operation_description": "Process checkout for the current cart, optionally applying a discount code",

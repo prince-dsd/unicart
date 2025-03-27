@@ -8,59 +8,59 @@ from drf_yasg.utils import swagger_auto_schema
 from decimal import Decimal
 from .models import Cart, Product, CouponCode, CartItem, Order
 from .serializers import CartSerializer, OrderSerializer, CouponCodeSerializer  # Ensure the serializer is imported
-from .swagger import cart_add_item, cart_checkout, generate_discount_code, report
+from .swagger import cart_add_items, cart_checkout, generate_discount_code, report
 
 class CartViewSet(viewsets.ViewSet):
     permission_classes = (IsAuthenticated,)
 
-    @swagger_auto_schema(**cart_add_item)
-    @action(detail=False, methods=['post'], url_path='add-item')  # Changed url_path
+    @swagger_auto_schema(**cart_add_items)
+    @action(detail=False, methods=['post'], url_path='add-items')
     def add_item(self, request):
         user = request.user
-        product_id = request.data.get('product_id')
-        quantity = request.data.get('quantity', 1)
+        products = request.data.get('products', [])
 
-        if not product_id:
+        if not isinstance(products, list) or not products:
             return Response(
-                {"error": "Product ID is required"},
+                {"error": "A list of products is required."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not isinstance(quantity, int) or quantity < 1:
-            return Response(
-                {"error": "Quantity must be a positive integer"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        cart, _ = Cart.objects.get_or_create(user=user)
 
-        try:
-            product = Product.objects.get(id=product_id)
-            cart, _ = Cart.objects.get_or_create(user=user)
-            
-            # Ensure CartItem is tied to the user's cart
-            cart_item, created = CartItem.objects.get_or_create(
-                cart=cart,  # Associate the CartItem with the user's cart
-                product=product,
-                defaults={'quantity': quantity}
-            )
-            
-            if not created:
-                cart_item.quantity += quantity
-                cart_item.save()
-            
-            # Recalculate total amount
-            cart.total_amount = sum(
-                item.product.price * item.quantity 
-                for item in cart.items.all()
-            )
-            cart.save()
+        for product_data in products:
+            product_id = product_data.get('product_id')
+            quantity = product_data.get('quantity', 1)
 
-            return Response(CartSerializer(cart).data)
-            
-        except Product.DoesNotExist:
-            return Response(
-                {"error": "Product not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            if not product_id or not isinstance(quantity, int) or quantity < 1:
+                return Response(
+                    {"error": "Each product must have a valid product_id and a positive quantity."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                product = Product.objects.get(id=product_id)
+                cart_item, created = CartItem.objects.get_or_create(
+                    cart=cart,
+                    product=product,
+                    defaults={'quantity': quantity}
+                )
+                if not created:
+                    cart_item.quantity += quantity
+                    cart_item.save()
+            except Product.DoesNotExist:
+                return Response(
+                    {"error": f"Product with ID {product_id} not found."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        # Recalculate total amount
+        cart.total_amount = sum(
+            item.product.price * item.quantity
+            for item in cart.items.all()
+        )
+        cart.save()
+
+        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(**cart_checkout)
     @action(detail=False, methods=['post'], url_path='checkout')
@@ -128,13 +128,16 @@ class CartViewSet(viewsets.ViewSet):
                 discount_code.is_used = True
                 discount_code.save()
 
-            # Clear the cart and associated cart items
-            cart.delete()  # This will also delete all related CartItem objects due to the ForeignKey relationship
-
-            return Response({
+            # Serialize the order response
+            response_data = {
                 'order': OrderSerializer(order).data,
                 'message': f'Order #{order.order_number} created successfully'
-            }, status=status.HTTP_201_CREATED)
+            }
+
+            # Delete the cart and associated cart items after serialization
+            cart.delete()  # This will also delete all related CartItem objects due to the ForeignKey relationship
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
         except Cart.DoesNotExist:
             return Response(
                 {"error": "Cart not found"},
