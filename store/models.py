@@ -34,9 +34,10 @@ class CouponCode(models.Model):
 
 class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
     discount_code = models.ForeignKey(CouponCode, null=True, blank=True, on_delete=models.SET_NULL)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    total_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    total_items_purchased = models.PositiveIntegerField(default=0)  
     created_at = models.DateTimeField(auto_now_add=True)
     order_number = models.PositiveIntegerField(unique=True)
 

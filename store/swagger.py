@@ -236,17 +236,27 @@ report = {
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'total_items_purchased': openapi.Schema(
-                        type=openapi.TYPE_INTEGER,
-                        description='Total number of items purchased'
+                    'orders': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'order_number': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'user': openapi.Schema(type=openapi.TYPE_STRING),
+                                'total_items_purchased': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'total_purchase_amount': openapi.Schema(type=openapi.TYPE_NUMBER),
+                                'discount_code': openapi.Schema(type=openapi.TYPE_STRING, nullable=True),
+                                'discount_amount': openapi.Schema(type=openapi.TYPE_NUMBER)
+                            }
+                        )
                     ),
-                    'total_purchase_amount': openapi.Schema(
-                        type=openapi.TYPE_NUMBER,
-                        description='Total amount of all purchases'
-                    ),
-                    'discount_codes_used': openapi.Schema(
-                        type=openapi.TYPE_INTEGER,
-                        description='Number of discount codes used'
+                    'summary': openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'total_items_purchased': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'total_purchase_amount': openapi.Schema(type=openapi.TYPE_NUMBER),
+                            'total_discount_amount': openapi.Schema(type=openapi.TYPE_NUMBER)
+                        }
                     )
                 }
             )

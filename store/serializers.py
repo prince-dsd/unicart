@@ -18,17 +18,26 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['user', 'items', 'total_amount']  # Removed 'coupon_code'
+        fields = ['user', 'items', 'total_amount']
 
 class CouponCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = CouponCode
-        fields = ['code', 'discount_percentage']  # Include only the required fields
+        fields = ['code', 'discount_percentage', 'is_used', 'order_n']
 
 class OrderSerializer(serializers.ModelSerializer):
-    cart = CartSerializer()
-    discount_code = CouponCodeSerializer()
+    discount_code = CouponCodeSerializer()  # Serialize the discount code
+    total_items_purchased = serializers.IntegerField()  # Include total items purchased
+    total_discount_amount = serializers.DecimalField(max_digits=10, decimal_places=2)  # Include total discount amount
 
     class Meta:
         model = Order
-        fields = ['user', 'cart', 'discount_code', 'total_amount', 'created_at', 'order_number']  # Added 'created_at' and 'order_number'
+        fields = [
+            'user',
+            'discount_code',
+            'total_amount',
+            'total_discount_amount',
+            'total_items_purchased',
+            'created_at',
+            'order_number'
+        ]
