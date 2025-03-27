@@ -170,23 +170,20 @@ class CartViewSet(viewsets.ViewSet):
             )
 
         try:
-            total_items = Order.objects.aggregate(
-                total_items=Sum('cart__items__quantity')
+            total_items = CartItem.objects.aggregate(
+                total_items=Sum('quantity')
             )['total_items'] or 0
-            
+
             total_purchase = Order.objects.aggregate(
-                total_purchase=Sum('total_amount'),
-                total_discount=Sum('discount_amount')
-            )
-            
-            discount_codes = CouponCode.objects.filter(is_used=True)
+                total_purchase=Sum('total_amount')
+            )['total_purchase'] or 0
+
+            discount_codes_used = CouponCode.objects.filter(is_used=True).count()
 
             return Response({
                 'total_items_purchased': total_items,
-                'total_purchase_amount': total_purchase['total_purchase'] or 0,
-                'total_discount_amount': total_purchase['total_discount'] or 0,
-                'discount_codes_used': discount_codes.count(),
-                'discount_codes': list(discount_codes.values('code', 'order_n'))
+                'total_purchase_amount': total_purchase,
+                'discount_codes_used': discount_codes_used
             })
         except Exception as e:
             return Response(
