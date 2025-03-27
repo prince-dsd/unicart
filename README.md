@@ -14,6 +14,7 @@ Unicart is a simple e-commerce platform built using Django. It provides function
 - Python 3.8+
 - Django 5.1+
 - Django REST Framework
+- Poetry (for dependency management)
 
 ## Installation
 
@@ -23,15 +24,14 @@ Unicart is a simple e-commerce platform built using Django. It provides function
     cd unicart
     ```
 
-2. Create and activate a virtual environment:
+2. Install Poetry (if not already installed):
     ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    curl -sSL https://install.python-poetry.org | python3 -
     ```
 
-3. Install dependencies:
+3. Install dependencies using Poetry:
     ```bash
-    pip install -r requirements.txt
+    poetry install
     ```
 
 4. Set up the database:
@@ -68,4 +68,4 @@ Unicart is a simple e-commerce platform built using Django. It provides function
 
 ## License
 
-This project is licensed under the MIT License.  
+This project is licensed under the MIT License.
