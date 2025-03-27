@@ -34,21 +34,38 @@ Unicart is a simple e-commerce platform built using Django. It provides function
     poetry install
     ```
 
-4. Set up the database:
+4. Set up the `.env` file:
+    Create a `.env` file in the root directory of the project and add the following keys:
+    ```properties
+    SECRET_KEY='your-django-secret-key'
+    DATABASE_URL='your-database-url'
+    ```
+    Replace `your-django-secret-key` with a secure key for your Django application, and `your-database-url` with the connection string for your database.
+
+5. Set up the database:
     ```bash
     python manage.py makemigrations
     python manage.py migrate
     ```
 
-5. Create a superuser for the admin panel:
+6. Create a superuser for the admin panel:
     ```bash
     python manage.py createsuperuser
     ```
 
-6. Start the development server:
+7. Start the development server:
     ```bash
     python manage.py runserver
     ```
+
+## Running Tests
+
+To run the tests for the application, use the following command:
+```bash
+python manage.py test
+```
+
+This will execute all the test cases defined in the `store/tests/` directory and provide a summary of the results.
 
 ## Usage
 
