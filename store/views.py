@@ -67,19 +67,22 @@ class CartViewSet(viewsets.ViewSet):
     def checkout(self, request):
         user = request.user
         try:
-            # Get the user's cart
-            cart = Cart.objects.get(user=user)
+            # Get or create the user's cart
+            cart, created = Cart.objects.get_or_create(user=user)
+            if created:
+                cart.save()  # Ensure the cart is saved to the database
+
             if not cart.items.exists():
                 return Response(
                     {"error": "Cart is empty"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            coupon_code = request.data.get('coupon_code')
+            coupon_code = request.data.get('coupon_code', '').strip()  # Accept empty string
             discount_code = None
             discount_amount = 0
 
-            if coupon_code:
+            if coupon_code:  # Check if a coupon code is provided
                 try:
                     # Fetch the coupon code
                     discount_code = CouponCode.objects.get(code=coupon_code, is_used=False)
@@ -92,18 +95,25 @@ class CartViewSet(viewsets.ViewSet):
                         # Apply the discount percentage
                         discount_amount = cart.total_amount * (discount_code.discount_percentage / 100)
                         cart.total_amount -= discount_amount
-                        discount_code.is_used = True
-                        discount_code.save()
                     else:
                         return Response(
-                            {"error": f"Coupon code is not valid for order #{next_order_number}"},
+                            {
+                                "error": f"Coupon code is not valid for order #{next_order_number}.",
+                                "message": "Please change the coupon code or remove it."
+                            },
                             status=status.HTTP_400_BAD_REQUEST
                         )
                 except CouponCode.DoesNotExist:
                     return Response(
-                        {"error": "Invalid or used coupon code"},
+                        {
+                            "error": "Invalid or used coupon code.",
+                            "message": "Please change the coupon code or remove it."
+                        },
                         status=status.HTTP_400_BAD_REQUEST
                     )
+
+            # Save the cart to ensure it has a primary key
+            cart.save()
 
             # Create the order
             order = Order.objects.create(
@@ -113,10 +123,13 @@ class CartViewSet(viewsets.ViewSet):
                 total_amount=cart.total_amount
             )
 
-            # Clear the cart
-            cart.items.clear()
-            cart.total_amount = 0
-            cart.save()
+            # Mark the coupon code as used if it was applied
+            if discount_code:
+                discount_code.is_used = True
+                discount_code.save()
+
+            # Clear the cart and associated cart items
+            cart.delete()  # This will also delete all related CartItem objects due to the ForeignKey relationship
 
             return Response({
                 'order': OrderSerializer(order).data,
