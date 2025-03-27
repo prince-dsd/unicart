@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from .models import Cart, Product, CartItem, Order, CouponCode
 import random
 import string
@@ -33,16 +34,42 @@ class CartService:
 
 class OrderService:
     @staticmethod
-    def checkout_cart(user, coupon_code):
-        cart = Cart.objects.get(user=user)
+    def checkout_cart(user, coupon_code=None):
+        """
+        Checkout the user's cart and create an order.
+
+        Args:
+            user: The user performing the checkout.
+            coupon_code: Optional discount coupon code.
+
+        Returns:
+            Order: The created order instance.
+
+        Raises:
+            ValueError: If the cart is empty or the coupon code is invalid.
+            Cart.DoesNotExist: If the cart does not exist for the user.
+            CouponCode.DoesNotExist: If the coupon code does not exist or is already used.
+        """
+        # Fetch the user's cart
+        try:
+            cart = Cart.objects.get(user=user)
+        except Cart.DoesNotExist:
+            raise ValueError("Cart not found.")
+
         if not cart.items.exists():
             raise ValueError("Cart is empty.")
 
         discount_code = None
         discount_amount = 0
 
+        # Validate and apply the coupon code if provided
         if coupon_code:
-            discount_code = CouponCode.objects.get(code=coupon_code, is_used=False)
+            try:
+                discount_code = CouponCode.objects.get(code=coupon_code, is_used=False)
+            except CouponCode.DoesNotExist:
+                raise ValueError("Invalid or used coupon code.")
+
+            # Check if the coupon code is valid for the next order
             last_order = Order.objects.filter(user=user).order_by('-order_number').first()
             next_order_number = 1 if not last_order else last_order.order_number + 1
 
@@ -69,8 +96,9 @@ class OrderService:
             discount_code.is_used = True
             discount_code.save()
 
-        # Delete the cart
+        # Delete the cart and its items
         cart.delete()
+
         return order
 
     @staticmethod
